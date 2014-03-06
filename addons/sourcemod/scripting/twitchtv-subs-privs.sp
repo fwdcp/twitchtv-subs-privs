@@ -84,7 +84,7 @@ public OnRetrieveAPIResult(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful
 		return;
 	}
 	
-	new Handle:hSteamIDList = json_object_get(hAPIResponse, "steamIDs");
+	new Handle:hSteamIDList = json_object_get(hAPIResponse, "users");
 	
 	for (new iElement = 0; iElement < json_array_size(hSteamIDList); iElement++) {
 		new Handle:hSubscriber = json_array_get(hSteamIDList, iElement);
