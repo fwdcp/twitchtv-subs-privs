@@ -33,7 +33,7 @@ public OnPluginStart()
 public OnRebuildAdminCache(AdminCachePart:part)
 {
 	if (part == AdminCache_Admins) {
-		decl String:sChannel[32];
+		decl String:sChannel[64];
 		GetConVarString(hChannel, sChannel, sizeof(sChannel));
 		
 		decl String:sAPIURL[256];
@@ -41,7 +41,7 @@ public OnRebuildAdminCache(AdminCachePart:part)
 		
 		new HTTPRequestHandle:httprhRequest = Steam_CreateHTTPRequest(HTTPMethod_GET, sAPIURL);
 		
-		decl String:sAPIKey[32];
+		decl String:sAPIKey[64];
 		GetConVarString(hAPIKey, sAPIKey, sizeof(sAPIKey));
 		
 		Steam_SetHTTPRequestGetOrPostParameter(httprhRequest, PRESSURE_API_QUERY_KEY, sAPIKey);
