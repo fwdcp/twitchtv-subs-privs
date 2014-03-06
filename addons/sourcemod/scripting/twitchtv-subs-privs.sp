@@ -5,7 +5,7 @@
 #define PRESSURE_API_URL_FORMAT "http://pressure.fwdcp.net/api/twitchtv/channel/%s/subscriptions/steamids"
 #define PRESSURE_API_QUERY_KEY "apikey"
 
-#define VERSION "0.1.0"
+#define VERSION "0.2.0"
 
 new Handle:hChannel = INVALID_HANDLE;
 new Handle:hAPIKey = INVALID_HANDLE;
@@ -61,6 +61,7 @@ public OnRetrieveAPIResult(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful
 	GetConVarString(hAdminGroup, sAdminGroup, sizeof(sAdminGroup));
 	
 	if (FindAdmGroup(sAdminGroup) == INVALID_GROUP_ID) {
+		LogError("Unable to find subscriber group.");
 		return;
 	}
 	new GroupId:adminGroup = FindAdmGroup(sAdminGroup);
