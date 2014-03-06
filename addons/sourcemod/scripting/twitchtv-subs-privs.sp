@@ -23,9 +23,9 @@ public Plugin:myinfo =
 public OnPluginStart()
 {
 	CreateConVar("twitchtv_subs_privs_version", VERSION, "TwitchTV Subscribers Privileges version", FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_CHEAT|FCVAR_DONTRECORD);
-	hChannel = CreateConVar("twitchtv_subs_privs_channel", "", "the channel from which subscribers are pulled (requires streamer to register on Pressure)", FCVAR_PLUGIN, true, 0.0, true, 2.0);
-	hAPIKey = CreateConVar("twitchtv_subs_privs_pressure_apikey", "", "the Pressure API key required to retrieve subscriber information from Pressure", FCVAR_PLUGIN|FCVAR_PROTECTED, true, 0.0, true, 1.0);
-	hAdminGroup = CreateConVar("twitchtv_subs_privs_admin_group", "Subscribers", "the name of the admin group that subscribers will be put into", FCVAR_PLUGIN|FCVAR_PROTECTED, true, 0.0, true, 1.0);
+	hChannel = CreateConVar("twitchtv_subs_privs_channel", "", "the channel from which subscribers are pulled (requires streamer to register on Pressure)", FCVAR_PLUGIN);
+	hAPIKey = CreateConVar("twitchtv_subs_privs_pressure_apikey", "", "the Pressure API key required to retrieve subscriber information from Pressure", FCVAR_PLUGIN|FCVAR_PROTECTED);
+	hAdminGroup = CreateConVar("twitchtv_subs_privs_admin_group", "Subscribers", "the name of the admin group that subscribers will be put into", FCVAR_PLUGIN|FCVAR_PROTECTED);
 	
 	AutoExecConfig();
 }
