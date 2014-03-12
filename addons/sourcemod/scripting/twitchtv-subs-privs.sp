@@ -2,10 +2,10 @@
 #include <steamtools>
 #include <smjansson>
 
-#define PRESSURE_API_URL_FORMAT "http://pressure.fwdcp.net/api/twitchtv/channel/%s/subscriptions/steamids"
+#define PRESSURE_API_URL_FORMAT "http://pressure.fwdcp.net/api/twitchtv/channel/%s/subscription/steam/%s"
 #define PRESSURE_API_QUERY_KEY "apikey"
 
-#define VERSION "0.2.0"
+#define VERSION "0.3.0"
 
 new Handle:hChannel = INVALID_HANDLE;
 new Handle:hAPIKey = INVALID_HANDLE;
@@ -30,82 +30,95 @@ public OnPluginStart()
 	AutoExecConfig();
 }
 
-public OnRebuildAdminCache(AdminCachePart:part)
+public Action:OnClientPreAdminCheck(client)
 {
-	if (part == AdminCache_Admins) {
-		decl String:sChannel[64];
-		GetConVarString(hChannel, sChannel, sizeof(sChannel));
-		
-		decl String:sAPIURL[256];
-		Format(sAPIURL, sizeof(sAPIURL), PRESSURE_API_URL_FORMAT, sChannel);
-		
-		new HTTPRequestHandle:httprhRequest = Steam_CreateHTTPRequest(HTTPMethod_GET, sAPIURL);
-		
-		decl String:sAPIKey[64];
-		GetConVarString(hAPIKey, sAPIKey, sizeof(sAPIKey));
-		
-		Steam_SetHTTPRequestGetOrPostParameter(httprhRequest, PRESSURE_API_QUERY_KEY, sAPIKey);
-		
-		Steam_SendHTTPRequest(httprhRequest, OnRetrieveAPIResult);
-	}
+	RunAdminCacheChecks(client);
+	
+	decl String:sChannel[64];
+	GetConVarString(hChannel, sChannel, sizeof(sChannel));
+	
+	decl String:sCSteamID[64];
+	Steam_GetCSteamIDForClient(client, sCSteamID, sizeof(sCSteamID));
+	
+	decl String:sAPIURL[256];
+	Format(sAPIURL, sizeof(sAPIURL), PRESSURE_API_URL_FORMAT, sChannel, sCSteamID);
+	
+	new HTTPRequestHandle:httprhRequest = Steam_CreateHTTPRequest(HTTPMethod_GET, sAPIURL);
+	
+	decl String:sAPIKey[64];
+	GetConVarString(hAPIKey, sAPIKey, sizeof(sAPIKey));
+	
+	Steam_SetHTTPRequestGetOrPostParameter(httprhRequest, PRESSURE_API_QUERY_KEY, sAPIKey);
+	
+	Steam_SendHTTPRequest(httprhRequest, OnRetrieveAPIResult, GetClientUserId(client));
 }
 
-public OnRetrieveAPIResult(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode)
+public OnRetrieveAPIResult(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode, any:userid)
 {
-	if (statusCode != HTTPStatusCode_OK) {
-		LogError("Unable to load admins.");
-		return;
-	}
-		
-	decl String:sAdminGroup[32];
-	GetConVarString(hAdminGroup, sAdminGroup, sizeof(sAdminGroup));
+	new client = GetClientOfUserId(userid);
 	
-	if (FindAdmGroup(sAdminGroup) == INVALID_GROUP_ID) {
-		LogError("Unable to find subscriber group.");
+	if (statusCode != HTTPStatusCode_OK && statusCode != HTTPStatusCode_NotFound)
+	{
+		LogError("API returned error.");
+		NotifyPostAdminCheck(client);
 		return;
 	}
-	new GroupId:adminGroup = FindAdmGroup(sAdminGroup);
 	
 	new bodySize = Steam_GetHTTPResponseBodySize(HTTPRequest);
-	
 	decl String:sAPIResponse[bodySize + 1];
-	
 	Steam_GetHTTPResponseBodyData(HTTPRequest, sAPIResponse, bodySize + 1);
-	
 	new Handle:hAPIResponse = json_load(sAPIResponse);
 	
 	decl String:sServerChannel[32];
 	GetConVarString(hChannel, sServerChannel, sizeof(sServerChannel));
-	
 	decl String:sResponseChannel[32];
 	json_object_get_string(hAPIResponse, "channel", sResponseChannel, sizeof(sResponseChannel));
-	
-	if (!StrEqual(sServerChannel, sResponseChannel)) {
+	if (!StrEqual(sServerChannel, sResponseChannel))
+	{
 		LogError("Response returned not for channel.");
+		NotifyPostAdminCheck(client);
 		return;
 	}
 	
-	new Handle:hSteamIDList = json_object_get(hAPIResponse, "users");
-	
-	for (new iElement = 0; iElement < json_array_size(hSteamIDList); iElement++) {
-		new Handle:hSubscriber = json_array_get(hSteamIDList, iElement);
-		
-		decl String:sSubscriberSteamID[32];
-		json_object_get_string(hSubscriber, "steamid", sSubscriberSteamID, sizeof(sSubscriberSteamID));
-		
-		new AdminId:subscriber;
-		
-		if (FindAdminByIdentity(AUTHMETHOD_STEAM, sSubscriberSteamID) != INVALID_ADMIN_ID) {
-			subscriber = FindAdminByIdentity(AUTHMETHOD_STEAM, sSubscriberSteamID);
-		}
-		else {
-			decl String:sSubscriberName[32];
-			json_object_get_string(hSubscriber, "name", sSubscriberName, sizeof(sSubscriberName));
-			
-			subscriber = CreateAdmin(sSubscriberName);
-			BindAdminIdentity(subscriber, AUTHMETHOD_STEAM, sSubscriberSteamID);
-		}
-		
-		AdminInheritGroup(subscriber, adminGroup);
+	decl String:sClientCSteamID[64];
+	Steam_GetCSteamIDForClient(client, sClientCSteamID, sizeof(sClientCSteamID));
+	decl String:sResponseCSteamID[64];
+	json_object_get_string(hAPIResponse, "steam", sResponseCSteamID, sizeof(sResponseCSteamID));
+	if (!StrEqual(sClientCSteamID, sResponseCSteamID))
+	{
+		LogError("Response returned not for client.");
+		NotifyPostAdminCheck(client);
+		return;
 	}
+	
+	if (!json_object_get_bool(hAPIResponse, "subscribed"))
+	{
+		NotifyPostAdminCheck(client);
+		return;
+	}
+	
+	decl String:sAdminGroup[32];
+	GetConVarString(hAdminGroup, sAdminGroup, sizeof(sAdminGroup));
+	
+	if (FindAdmGroup(sAdminGroup) == INVALID_GROUP_ID)
+	{
+		LogError("Unable to find subscriber group.");
+		NotifyPostAdminCheck(client);
+		return;
+	}
+	new GroupId:adminGroup = FindAdmGroup(sAdminGroup);
+	
+	new AdminId:admin;	
+	if (GetUserAdmin(client) != INVALID_ADMIN_ID)
+	{
+		admin = GetUserAdmin(client);
+	}
+	else
+	{
+		admin = CreateAdmin();
+		SetUserAdmin(client, admin, true);
+	}
+	
+	AdminInheritGroup(admin, adminGroup);
+	NotifyPostAdminCheck(client);
 }
