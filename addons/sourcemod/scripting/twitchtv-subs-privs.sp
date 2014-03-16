@@ -5,7 +5,7 @@
 #define PRESSURE_API_URL_FORMAT "http://pressure.fwdcp.net/api/twitchtv/channel/%s/subscription/steam/%s"
 #define PRESSURE_API_QUERY_KEY "apikey"
 
-#define VERSION "0.3.0"
+#define VERSION "0.3.1"
 
 new Handle:hChannel = INVALID_HANDLE;
 new Handle:hAPIKey = INVALID_HANDLE;
@@ -51,6 +51,8 @@ public Action:OnClientPreAdminCheck(client)
 	Steam_SetHTTPRequestGetOrPostParameter(httprhRequest, PRESSURE_API_QUERY_KEY, sAPIKey);
 	
 	Steam_SendHTTPRequest(httprhRequest, OnRetrieveAPIResult, GetClientUserId(client));
+	
+	return Plugin_Handled;
 }
 
 public OnRetrieveAPIResult(HTTPRequestHandle:HTTPRequest, bool:requestSuccessful, HTTPStatusCode:statusCode, any:userid)
